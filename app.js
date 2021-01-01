@@ -1,3 +1,7 @@
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
+
 const { Client, MessageAttachment, MessageEmbed } = require("discord.js");
 const ytdl = require("ytdl-core");
 const client = new Client();
@@ -17,7 +21,7 @@ client.on("guildMemberAdd", (member) => {
 
 //Replies pong on ping
 client.on("message", (msg) => {
-  if (message.author.bot) return;
+  if (msg.author.bot) return;
   if (msg.content === "ping") {
     msg.reply("pong");
   }
@@ -25,15 +29,15 @@ client.on("message", (msg) => {
 
 //Replies with user's avatar link
 client.on("message", (msg) => {
+  if (msg.author.bot) return;
   if (msg.content === "what is my avatar") {
-    if (message.author.bot) return;
     msg.reply(msg.author.displayAvatarURL());
   }
 });
 
 //sending an attachment
 client.on("message", (msg) => {
-  if (message.author.bot) return;
+  if (msg.author.bot) return;
   if (msg.content === "|kirby") {
     const attachement = new MessageAttachment(
       "https://upload.wikimedia.org/wikipedia/en/thumb/2/2d/SSU_Kirby_artwork.png/220px-SSU_Kirby_artwork.png"
@@ -43,7 +47,7 @@ client.on("message", (msg) => {
 });
 
 client.on("message", (msg) => {
-  if (message.author.bot) return;
+  if (msg.author.bot) return;
   if (msg.content === "|random") {
     const attachement = new MessageAttachment("https://picsum.photos/200");
     msg.channel.send(attachement);
@@ -52,7 +56,7 @@ client.on("message", (msg) => {
 
 //message embed
 client.on("message", (msg) => {
-  if (message.author.bot) return;
+  if (msg.author.bot) return;
   if (msg.content === "who made you?") {
     const embed = new MessageEmbed()
       .setTitle("Orange Juice")
@@ -64,7 +68,7 @@ client.on("message", (msg) => {
 
 //kicking and banning
 client.on("message", (msg) => {
-  if (message.author.bot) return;
+  if (msg.author.bot) return;
   if (!msg.guild) return;
   if (msg.content.startsWith("|kick")) {
     const user = msg.mentions.users.first();
@@ -90,7 +94,7 @@ client.on("message", (msg) => {
 });
 
 client.on("message", (msg) => {
-  if (message.author.bot) return;
+  if (msg.author.bot) return;
   if (!msg.guild) return;
   if (msg.content.startsWith("|ban")) {
     const user = msg.mentions.users.first();
@@ -116,7 +120,7 @@ client.on("message", (msg) => {
 });
 
 client.on("message", async (msg) => {
-  if (message.author.bot) return;
+  if (msg.author.bot) return;
   if (!msg.guild) return;
   if (msg.content.startsWith("|join")) {
     const url = msg.content.substring(6);
@@ -127,19 +131,19 @@ client.on("message", async (msg) => {
 
       const dispatcher = connection.play(ytdl(url, { filter: "audioonly" }));
       client.on("message", async (msg) => {
-        if (message.author.bot) return;
+        if (msg.author.bot) return;
         if (msg.content == "|pause") {
           dispatcher.pause();
         }
       });
       client.on("message", async (msg) => {
-        if (message.author.bot) return;
+        if (msg.author.bot) return;
         if (msg.content == "|resume") {
           dispatcher.resume();
         }
       });
       client.on("message", async (msg) => {
-        if (message.author.bot) return;
+        if (msg.author.bot) return;
         if (msg.content.startsWith("|volume")) {
           const volume = parseFloat(msg.content.substring(8));
           dispatcher.setVolume(volume);
@@ -149,9 +153,9 @@ client.on("message", async (msg) => {
         console.log("Finished playing!");
         dispatcher.destroy();
       });
+    } else {
+      msg.reply("You need to join a voice channel first!");
     }
-  } else {
-    msg.reply("You need to join a voice channel first!");
   }
 });
 
