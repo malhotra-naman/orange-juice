@@ -2,161 +2,211 @@ if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
 
-const { Client, MessageAttachment, MessageEmbed } = require("discord.js");
+const { Client } = require("discord.js");
 const ytdl = require("ytdl-core");
+const kick = require("./controllers/kick");
+const ban = require("./controllers/ban");
+const greet = require("./controllers/greet");
+const pingPong = require("./controllers/pingPong");
+const avatar = require("./controllers/avatar");
+const kirby = require("./controllers/kirby");
+const random = require("./controllers/random");
+const messageEmbed = require("./controllers/messageEmbed");
 const client = new Client();
-require("events").EventEmitter.defaultMaxListeners = 15;
+const prefix = "|";
+require("events").EventEmitter.defaultMaxListeners = 20;
+const queue = new Map();
 client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
-//Server greeting
-client.on("guildMemberAdd", (member) => {
-  const channel = member.guild.channels.cache.find(
-    (ch) => ch.name === "member-log"
-  );
-  if (!channel) return;
-  channel.send(`Welcome to the server, ${member}!`);
+client.once("reconnecting", () => {
+  console.log("Reconnecting!");
 });
+
+client.once("disconnect", () => {
+  console.log("Disconnect!");
+});
+
+//Server greeting
+client.on("guildMemberAdd", greet);
 
 //Replies pong on ping
-client.on("message", (msg) => {
-  if (msg.author.bot) return;
-  if (msg.content === "ping") {
-    msg.reply("pong");
-  }
-});
+client.on("message", pingPong);
 
 //Replies with user's avatar link
-client.on("message", (msg) => {
-  if (msg.author.bot) return;
-  if (msg.content === "what is my avatar") {
-    msg.reply(msg.author.displayAvatarURL());
-  }
-});
+client.on("message", avatar);
 
 //sending an attachment
-client.on("message", (msg) => {
-  if (msg.author.bot) return;
-  if (msg.content === "|kirby") {
-    const attachement = new MessageAttachment(
-      "https://upload.wikimedia.org/wikipedia/en/thumb/2/2d/SSU_Kirby_artwork.png/220px-SSU_Kirby_artwork.png"
-    );
-    msg.channel.send(`${msg.author}`, attachement);
-  }
-});
+client.on("message", kirby);
 
-client.on("message", (msg) => {
-  if (msg.author.bot) return;
-  if (msg.content === "|random") {
-    const attachement = new MessageAttachment("https://picsum.photos/200");
-    msg.channel.send(attachement);
-  }
-});
+//random
+client.on("message", random);
 
 //message embed
-client.on("message", (msg) => {
-  if (msg.author.bot) return;
-  if (msg.content === "who made you?") {
-    const embed = new MessageEmbed()
-      .setTitle("Orange Juice")
-      .setColor("#f77f00")
-      .setDescription("A bot by Naman Malhotra");
-    msg.channel.send(embed);
-  }
-});
+client.on("message", messageEmbed);
 
 //kicking and banning
-client.on("message", (msg) => {
-  if (msg.author.bot) return;
-  if (!msg.guild) return;
-  if (msg.content.startsWith("|kick")) {
-    const user = msg.mentions.users.first();
-    if (user) {
-      const member = msg.guild.member(user);
-      if (member) {
-        member
-          .kick({ reason: "They were bad!" })
-          .then(() => {
-            msg.reply(`Successfully kicked ${user.tag}`);
-          })
-          .catch((err) => {
-            msg.reply("I was unable to kick the member");
-            console.log(err);
-          });
-      } else {
-        msg.reply("That user is not present in the guild dumbo!");
-      }
-    } else {
-      msg.reply("You didn't mention the person to kick!");
-    }
-  }
-});
+client.on("message", kick);
 
-client.on("message", (msg) => {
-  if (msg.author.bot) return;
-  if (!msg.guild) return;
-  if (msg.content.startsWith("|ban")) {
-    const user = msg.mentions.users.first();
-    if (user) {
-      const member = msg.guild.member(user);
-      if (member) {
-        member
-          .ban({ reason: "They were bad! :O" })
-          .then(() => {
-            msg.reply(`Successfully banned ${user.tag}`);
-          })
-          .catch((err) => {
-            msg.reply("I was unable to ban the member");
-            console.log(err);
-          });
-      } else {
-        msg.reply("That user is not present in the guild dumbo!");
-      }
-    } else {
-      msg.reply("You didn't mention the person to ban!");
-    }
-  }
-});
+client.on("message", ban);
 
 client.on("message", async (msg) => {
   if (msg.author.bot) return;
   if (!msg.guild) return;
-  if (msg.content.startsWith("|join")) {
-    const url = msg.content.substring(6);
-    if (msg.member.voice.channel) {
-      const connection = await msg.member.voice.channel.join();
-
-      console.log("Connection Successful!");
-
-      const dispatcher = connection.play(ytdl(url, { filter: "audioonly" }));
-      client.on("message", async (msg) => {
-        if (msg.author.bot) return;
-        if (msg.content == "|pause") {
-          dispatcher.pause();
-        }
-      });
-      client.on("message", async (msg) => {
-        if (msg.author.bot) return;
-        if (msg.content == "|resume") {
-          dispatcher.resume();
-        }
-      });
-      client.on("message", async (msg) => {
-        if (msg.author.bot) return;
-        if (msg.content.startsWith("|volume")) {
-          const volume = parseFloat(msg.content.substring(8));
-          dispatcher.setVolume(volume);
-        }
-      });
-      client.on("finish", () => {
-        console.log("Finished playing!");
-        dispatcher.destroy();
-      });
-    } else {
-      msg.reply("You need to join a voice channel first!");
-    }
+  const serverQueue = queue.get(msg.guild.id);
+  if (msg.content.startsWith(`${prefix}play`)) {
+    execute(msg, serverQueue);
+    return;
+  } else if (msg.content.startsWith(`${prefix}skip`)) {
+    skip(msg, serverQueue);
+    return;
+  } else if (msg.content.startsWith(`${prefix}stop`)) {
+    stop(msg, serverQueue);
+    return;
   }
+  // if (msg.content.startsWith("|join")) {
+  //   const url = msg.content.substring(6);
+
+  //     const dispatcher = connection.play(ytdl(url, { filter: "audioonly" }));
+  //     client.on("message", async (msg) => {
+  //       if (msg.author.bot) return;
+  //       if (msg.content == "|pause") {
+  //         dispatcher.pause();
+  //       }
+  //     });
+  //     client.on("message", async (msg) => {
+  //       if (msg.author.bot) return;
+  //       if (msg.content == "|resume") {
+  //         dispatcher.resume();
+  //       }
+  //     });
+  //     client.on("message", async (msg) => {
+  //       if (msg.author.bot) return;
+  //       if (msg.content.startsWith("|volume")) {
+  //         const volume = parseFloat(msg.content.substring(8));
+  //         dispatcher.setVolume(volume);
+  //       }
+  //     });
+  //     client.on("finish", () => {
+  //       console.log("Finished playing!");
+  //       dispatcher.destroy();
+  //     });
+  //   } else {
+  //     msg.reply("You need to join a voice channel first!");
+  //   }
+  // }
 });
+
+async function execute(message, serverQueue) {
+  const args = message.content.split(" ");
+
+  const voiceChannel = message.member.voice.channel;
+  if (!voiceChannel)
+    return message.channel.send(
+      "You need to be in a voice channel to play music!"
+    );
+  const permissions = voiceChannel.permissionsFor(message.client.user);
+  if (!permissions.has("CONNECT") || !permissions.has("SPEAK")) {
+    return message.channel.send(
+      "I need the permissions to join and speak in your voice channel!"
+    );
+  }
+
+  const songInfo = await ytdl.getInfo(args[1]);
+  const song = {
+    title: songInfo.videoDetails.title,
+    url: songInfo.videoDetails.video_url,
+  };
+
+  if (!serverQueue) {
+    const queueContruct = {
+      textChannel: message.channel,
+      voiceChannel: voiceChannel,
+      connection: null,
+      songs: [],
+      volume: 5,
+      playing: true,
+    };
+
+    queue.set(message.guild.id, queueContruct);
+
+    queueContruct.songs.push(song);
+
+    try {
+      var connection = await voiceChannel.join();
+      queueContruct.connection = connection;
+      play(message.guild, queueContruct.songs[0]);
+    } catch (err) {
+      console.log(err);
+      queue.delete(message.guild.id);
+      return message.channel.send(err);
+    }
+  } else {
+    serverQueue.songs.push(song);
+    return message.channel.send(`${song.title} has been added to the queue!`);
+  }
+}
+
+function skip(message, serverQueue) {
+  if (!message.member.voice.channel)
+    return message.channel.send(
+      "You have to be in a voice channel to stop the music!"
+    );
+  if (!serverQueue)
+    return message.channel.send("There is no song that I could skip!");
+  serverQueue.connection.dispatcher.end();
+}
+
+function stop(message, serverQueue) {
+  if (!message.member.voice.channel)
+    return message.channel.send(
+      "You have to be in a voice channel to stop the music!"
+    );
+
+  if (!serverQueue)
+    return message.channel.send("There is no song that I could stop!");
+
+  serverQueue.songs = [];
+  serverQueue.connection.dispatcher.end();
+}
+
+function play(guild, song) {
+  const serverQueue = queue.get(guild.id);
+  if (!song) {
+    serverQueue.voiceChannel.leave();
+    queue.delete(guild.id);
+    return;
+  }
+
+  const dispatcher = serverQueue.connection
+    .play(ytdl(song.url, { filter: "audioonly" }))
+    .on("finish", () => {
+      serverQueue.songs.shift();
+      play(guild, serverQueue.songs[0]);
+    })
+    .on("error", (error) => console.error(error));
+  dispatcher.setVolumeLogarithmic(serverQueue.volume / 5);
+  serverQueue.textChannel.send(`Start playing: **${song.title}**`);
+  client.on("message", async (msg) => {
+    if (msg.author.bot) return;
+    if (msg.content.startsWith("|volume")) {
+      const volume = parseFloat(msg.content.substring(8));
+      dispatcher.setVolume(volume);
+    }
+  });
+  client.on("message", async (msg) => {
+    if (msg.author.bot) return;
+    if (msg.content == "|pause") {
+      dispatcher.pause();
+    }
+  });
+  client.on("message", async (msg) => {
+    if (msg.author.bot) return;
+    if (msg.content == "|resume") {
+      dispatcher.resume();
+    }
+  });
+}
 
 client.login(process.env.BOT_TOKEN);
