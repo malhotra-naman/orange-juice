@@ -12,6 +12,7 @@ const avatar = require("./controllers/avatar");
 const kirby = require("./controllers/kirby");
 const random = require("./controllers/random");
 const messageEmbed = require("./controllers/messageEmbed");
+const getYoutubeVideo = require("./controllers/youtubeSeach");
 const client = new Client();
 const prefix = "|";
 require("events").EventEmitter.defaultMaxListeners = 20;
@@ -65,41 +66,15 @@ client.on("message", async (msg) => {
     stop(msg, serverQueue);
     return;
   }
-  // if (msg.content.startsWith("|join")) {
-  //   const url = msg.content.substring(6);
-
-  //     const dispatcher = connection.play(ytdl(url, { filter: "audioonly" }));
-  //     client.on("message", async (msg) => {
-  //       if (msg.author.bot) return;
-  //       if (msg.content == "|pause") {
-  //         dispatcher.pause();
-  //       }
-  //     });
-  //     client.on("message", async (msg) => {
-  //       if (msg.author.bot) return;
-  //       if (msg.content == "|resume") {
-  //         dispatcher.resume();
-  //       }
-  //     });
-  //     client.on("message", async (msg) => {
-  //       if (msg.author.bot) return;
-  //       if (msg.content.startsWith("|volume")) {
-  //         const volume = parseFloat(msg.content.substring(8));
-  //         dispatcher.setVolume(volume);
-  //       }
-  //     });
-  //     client.on("finish", () => {
-  //       console.log("Finished playing!");
-  //       dispatcher.destroy();
-  //     });
-  //   } else {
-  //     msg.reply("You need to join a voice channel first!");
-  //   }
-  // }
 });
 
 async function execute(message, serverQueue) {
   const args = message.content.split(" ");
+
+  if (!args[1].startsWith("https://")) {
+    const url = await getYoutubeVideo(message);
+    args[1] = url;
+  }
 
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel)
