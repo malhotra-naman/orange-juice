@@ -1,7 +1,7 @@
 module.exports = (msg) => {
   if (msg.author.bot) return;
   if (!msg.guild) return;
-  if (msg.content.startsWith("|ban")) {
+  if (msg.content.startsWith(`${prefix}ban`)) {
     const user = msg.mentions.users.first();
     if (user) {
       const member = msg.guild.member(user);

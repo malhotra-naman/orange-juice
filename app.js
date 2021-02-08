@@ -13,12 +13,20 @@ const kirby = require("./controllers/kirby");
 const random = require("./controllers/random");
 const messageEmbed = require("./controllers/messageEmbed");
 const getYoutubeVideo = require("./controllers/youtubeSeach");
+const help = require("./controllers/help");
 const client = new Client();
-const prefix = "|";
+const prefix = "/";
 require("events").EventEmitter.defaultMaxListeners = 20;
 const queue = new Map();
 client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
+  //Status
+  client.user
+    .setActivity(`${prefix}help`, { type: "PLAYING" })
+    .then((presence) =>
+      console.log(`Activity set to ${presence.activities[0].name}`)
+    )
+    .catch(console.error);
 });
 
 client.once("reconnecting", () => {
@@ -31,6 +39,9 @@ client.once("disconnect", () => {
 
 //Server greeting
 client.on("guildMemberAdd", greet);
+
+//Help
+client.on("message", help);
 
 //Replies pong on ping
 client.on("message", pingPong);
