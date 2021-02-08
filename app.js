@@ -15,7 +15,7 @@ const messageEmbed = require("./controllers/messageEmbed");
 const getYoutubeVideo = require("./controllers/youtubeSeach");
 const help = require("./controllers/help");
 const client = new Client();
-const prefix = "/";
+const prefix = "`";
 require("events").EventEmitter.defaultMaxListeners = 20;
 const queue = new Map();
 client.on("ready", () => {
@@ -176,20 +176,20 @@ function play(guild, song) {
   serverQueue.textChannel.send(`Start playing: **${song.title}**`);
   client.on("message", async (msg) => {
     if (msg.author.bot) return;
-    if (msg.content.startsWith("|volume")) {
+    if (msg.content.startsWith(`${prefix}volume`)) {
       const volume = parseFloat(msg.content.substring(8));
       dispatcher.setVolume(volume);
     }
   });
   client.on("message", async (msg) => {
     if (msg.author.bot) return;
-    if (msg.content == "|pause") {
+    if (msg.content == `${prefix}pause`) {
       dispatcher.pause();
     }
   });
   client.on("message", async (msg) => {
     if (msg.author.bot) return;
-    if (msg.content == "|resume") {
+    if (msg.content == `${prefix}resume`) {
       dispatcher.resume();
     }
   });
